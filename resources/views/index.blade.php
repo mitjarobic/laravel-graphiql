@@ -141,6 +141,7 @@
     // Defines a GraphQL fetcher using the fetch API.
     function graphQLFetcher(graphQLParams) {
 
+        const jwtToken = document.getElementById('jwt-token').value;
         localStorage.setItem('graphiql:jwtToken', jwtToken);
 
         //return fetch("http://localhost:8000/graphql", {
