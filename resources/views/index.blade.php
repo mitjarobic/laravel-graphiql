@@ -136,10 +136,11 @@
         history.replaceState(null, null, newSearch);
     }
 
+    const jwtToken = document.getElementById('jwt-token').value;
+
     // Defines a GraphQL fetcher using the fetch API.
     function graphQLFetcher(graphQLParams) {
 
-        const jwtToken = document.getElementById('jwt-token').value;
         localStorage.setItem('graphiql:jwtToken', jwtToken);
 
         //return fetch("http://localhost:8000/graphql", {
@@ -168,7 +169,11 @@
     }
 
     var subscriptionsClient = new window.SubscriptionsTransportWs.SubscriptionClient("{{config('graphiql.webSocketEndPoint')}}" , {
-        reconnect: true
+        reconnect: true,
+        timeout: 20000,
+        connectionParams: {
+            Authorization: jwtToken ? 'Bearer '+jwtToken : null
+        }
     });
 
     graphQLFetcher = window.GraphiQLSubscriptionsFetcher.graphQLFetcher(subscriptionsClient, graphQLFetcher);
