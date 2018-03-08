@@ -19,22 +19,15 @@
     #graphiql {
       height: 100vh;
     }
-    .jwt-token{
-      padding:10px;
+
+    .toolbar{
+      display:flex;
       background:#f7f7f7;
+      padding:10px;
       font-family: system, -apple-system, 'San Francisco', '.SFNSDisplay-Regular', 'Segoe UI', Segoe, 'Segoe WP', 'Helvetica Neue', helvetica, 'Lucida Grande', arial, sans-serif;
     }
-    .jwt-token input {
-      display: inline-block;
-      width: 400px;
-      padding: 5px;
-      border:1px solid #d0d0d0;
-      margin-left: 5px;
-      color: #777777;
-      border-radius: 3px;
-    }
 
-    .jwt-token button#remove-token{
+    .toolbar button{
       background: linear-gradient(#f9f9f9,#ececec);
       border-radius: 3px;
       box-shadow: inset 0 0 0 1px rgba(0,0,0,.2), 0 1px 0 rgba(255,255,255,.7), inset 0 1px #fff;
@@ -44,6 +37,33 @@
       padding: 6px 11px 6px;
       cursor:pointer;
     }
+
+    .toolbar input{
+      display: inline-block;
+      padding: 5px;
+      border:1px solid #d0d0d0;
+      margin-left: 5px;
+      color: #777777;
+      border-radius: 3px;
+    }
+
+    .jwt-token{
+      margin-right:20px;
+    }
+    .jwt-token input {
+      width: 400px;
+    }
+
+    /*.jwt-token button#remove-token{*/
+    /*background: linear-gradient(#f9f9f9,#ececec);*/
+    /*border-radius: 3px;*/
+    /*box-shadow: inset 0 0 0 1px rgba(0,0,0,.2), 0 1px 0 rgba(255,255,255,.7), inset 0 1px #fff;*/
+    /*color: #555;*/
+    /*border: 0px;*/
+    /*margin: 0 5px;*/
+    /*padding: 6px 11px 6px;*/
+    /*cursor:pointer;*/
+    /*}*/
   </style>
 
   <link rel="stylesheet" href="{{config('graphiql.paths.assets_public')}}/graphiql.css" />
@@ -60,13 +80,23 @@
   <script>window.GraphiQLSubscriptionsFetcher || document.write('<script src="{{config('graphiql.paths.assets_public')}}/vendor/graphiql-subscriptions.js">\x3C/script>')</script>
 
   <script src="{{config('graphiql.paths.assets_public')}}/graphiql.js"></script>
+  {{--<script src="{{config('graphiql.paths.assets_public')}}/CustomGraphiQL.js"></script>--}}
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
 
 </head>
 <body>
-<div class="jwt-token">
-  <label>Token</label>
-  <input id="jwt-token" placeholder="Paste token (without Bearer)">
-  <button id="remove-token">✖</button>
+<div class="toolbar">
+  <div class="jwt-token">
+    <label>Token</label>
+    <input id="jwt-token" placeholder="Paste token (without Bearer)">
+    <button id="remove-token">✖</button>
+  </div>
+  <div class="login">
+    <label>Login by user id</label>
+    <input id="user_id" placeholder="User id or empty for first">
+    <button id="login">Login</button>
+  </div>
 </div>
 <div id="graphiql">Loading...</div>
 <script>
@@ -96,6 +126,23 @@
     remove_token.onclick = function(){
         localStorage.removeItem('graphiql:jwtToken');
         document.getElementById('jwt-token').value = '';
+    }
+
+    var login = document.getElementById('login');
+    login.onclick = function(){
+        var user_id = document.getElementById('user_id').value;
+        axios.post('/api/login/fake/'+user_id)
+            .then(function (response) {
+                console.log(response);
+                localStorage.removeItem('graphiql:jwtToken');
+                localStorage.setItem('graphiql:jwtToken', response.data.token);
+                document.getElementById('jwt-token').value = response.data.token;
+            })
+            .catch(function (error) {
+                console.log(error);
+                alert('login failed!')
+            });
+
     }
 
     // if variables was provided, try to format it.
@@ -136,13 +183,16 @@
         history.replaceState(null, null, newSearch);
     }
 
-    const jwtToken = document.getElementById('jwt-token').value;
+
+    function getToken(){
+
+        var jwtToken = document.getElementById('jwt-token').value;
+        localStorage.setItem('graphiql:jwtToken', jwtToken);
+        return jwtToken ? 'Bearer '+jwtToken : null;
+    }
 
     // Defines a GraphQL fetcher using the fetch API.
     function graphQLFetcher(graphQLParams) {
-
-        const jwtToken = document.getElementById('jwt-token').value;
-        localStorage.setItem('graphiql:jwtToken', jwtToken);
 
         //return fetch("http://localhost:8000/graphql", {
         return fetch("{{url(config('graphiql.routes.graphql'))}}", {
@@ -153,7 +203,7 @@
               @empty
               'Accept': 'application/json',
                 'Content-Type': 'application/json',
-                'Authorization': jwtToken ? 'Bearer '+jwtToken : null
+                'Authorization': getToken()
               @endforelse
             },
             body: JSON.stringify(graphQLParams),
@@ -173,9 +223,18 @@
         reconnect: true,
         timeout: 20000,
         connectionParams: {
-            Authorization: jwtToken ? 'Bearer '+jwtToken : null
+            Authorization: getToken()
         }
-    });
+    })
+
+    // subscriptionsClient.use([
+    //     {
+    //         applyMiddleware: function(operationOptions, next) {
+    //             operationOptions['Authorization'] = getToken();
+    //             next();
+    //         }
+    //     }
+    // ]);
 
     graphQLFetcher = window.GraphiQLSubscriptionsFetcher.graphQLFetcher(subscriptionsClient, graphQLFetcher);
 
